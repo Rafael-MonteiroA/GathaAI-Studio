@@ -1,0 +1,29 @@
+# GathaAI Studio Backend Dependencies
+# ── Core ──────────────────────────────────────
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# ── Database ──────────────────────────────────
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# ── Cache ─────────────────────────────────────
+redis[hiredis]
+
+# ── HTTP Client (for Ollama + future providers)
+httpx
+
+# ── Streaming ─────────────────────────────────
+sse-starlette
+
+# ── Testing ───────────────────────────────────
+pytest
+pytest-asyncio
+pytest-cov
+aiosqlite
+
+# ── Dev tools ─────────────────────────────────
+ruff
