@@ -107,6 +107,11 @@ class OllamaAdapter(ProviderAdapter):
                     message_data = data.get("message", {})
                     content = message_data.get("content", "")
 
+                    # Skip empty content tokens (e.g. qwen3 "thinking" phase)
+                    # but always yield the final done chunk for metadata
+                    if not content and not is_done:
+                        continue
+
                     chunk = StreamChunk(
                         content=content,
                         done=is_done,

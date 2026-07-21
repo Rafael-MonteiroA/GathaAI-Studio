@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gathaai_dev_2024}
       POSTGRES_DB: ${POSTGRES_DB:-gathaai_studio}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -32,6 +32,8 @@ services:
       retries: 5
 
   # ── Backend (FastAPI) ────────────────────────
+  # Uses network_mode: host so it can reach Ollama at localhost:11434
+  # without needing to reconfigure Ollama's listen address.
   backend:
     build:
       context: .
@@ -39,8 +41,7 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "8000:8000"
+    network_mode: host
     volumes:
       - ./backend:/app/backend
     depends_on:
@@ -48,8 +49,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
