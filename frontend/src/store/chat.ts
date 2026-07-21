@@ -23,6 +23,7 @@ import { streamMessage } from "@/lib/streaming";
 
 interface ChatMessage extends Message {
   isStreaming?: boolean;
+  thinking?: string;
 }
 
 interface ChatState {
@@ -167,14 +168,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Start streaming
     const controller = streamMessage(activeConversationId, content, {
-      onToken: (token) => {
+      onToken: (data) => {
         set((state) => {
           const messages = [...state.messages];
           const last = messages[messages.length - 1];
           if (last && last.role === "assistant") {
             messages[messages.length - 1] = {
               ...last,
-              content: last.content + token,
+              content: last.content + (data.content || ""),
+              thinking: (last.thinking || "") + (data.thinking || ""),
             };
           }
           return { messages };

@@ -24,6 +24,7 @@ class ChatMessage:
 class StreamChunk:
     """A single chunk emitted during streaming."""
     content: str = ""
+    thinking: str = ""
     done: bool = False
     model: str = ""
     tokens_prompt: int | None = None

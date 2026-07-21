@@ -195,7 +195,10 @@ async def send_message(
                 else:
                     yield {
                         "event": "token",
-                        "data": json.dumps({"content": chunk.content}),
+                        "data": json.dumps({
+                            "content": chunk.content,
+                            "thinking": getattr(chunk, "thinking", "")
+                        }),
                     }
 
             # Auto-title after first exchange

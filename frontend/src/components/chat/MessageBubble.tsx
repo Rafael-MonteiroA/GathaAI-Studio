@@ -5,13 +5,14 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { motion } from "framer-motion";
-import { Bot, User, Copy, Check } from "lucide-react";
+import { Bot, User, Copy, Check, BrainCircuit, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 interface MessageBubbleProps {
   role: "user" | "assistant" | "system";
   content: string;
   isStreaming?: boolean;
+  thinking?: string;
   model?: string | null;
 }
 
@@ -19,6 +20,7 @@ export function MessageBubble({
   role,
   content,
   isStreaming,
+  thinking,
   model,
 }: MessageBubbleProps) {
   const isUser = role === "user";
@@ -56,7 +58,37 @@ export function MessageBubble({
           )}
         </div>
 
-        <div className="prose prose-invert prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+        {thinking && (
+          <div className="mb-4 mt-2">
+            {isStreaming && !content ? (
+              <div className="bg-muted/30 border border-primary/20 rounded-lg p-4 space-y-3 shadow-lg shadow-primary/5 animate-fade-in-up">
+                <div className="flex items-center gap-2 text-primary font-medium text-sm">
+                  <BrainCircuit size={16} className="animate-pulse" />
+                  Raciocinando...
+                </div>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap font-mono opacity-80 max-h-[200px] overflow-y-auto scrollbar-thin">
+                  {thinking}
+                </div>
+                <div className="h-1 w-full bg-muted overflow-hidden rounded-full mt-2 relative">
+                  <div className="absolute top-0 left-0 h-full w-[30%] bg-primary/50 rounded-full animate-progress" />
+                </div>
+              </div>
+            ) : (
+              <details className="group border border-border rounded-lg bg-card/50 overflow-hidden [&_summary::-webkit-details-marker]:hidden animate-fade-in-up">
+                <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors select-none text-xs font-medium text-muted-foreground">
+                  <BrainCircuit size={14} />
+                  Processo de raciocínio
+                  <ChevronRight size={14} className="ml-auto transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="p-3 pt-1 text-xs text-muted-foreground/80 whitespace-pre-wrap font-mono border-t border-border/50 bg-muted/20">
+                  {thinking}
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+
+        <div className="prose prose-invert prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 mt-2">
           {content ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -130,7 +162,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   };
 
   return (
-    <div className="relative group rounded-lg overflow-hidden my-3 border border-border">
+    <div className="not-prose relative group rounded-lg overflow-hidden my-3 border border-border">
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted/80 border-b border-border">
         <span className="text-[11px] font-mono text-muted-foreground">
           {language}
@@ -152,6 +184,9 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           borderRadius: 0,
           background: "oklch(0.14 0.01 260)",
           fontSize: "13px",
+        }}
+        codeTagProps={{
+          style: { backgroundColor: "transparent", inherit: "background" }
         }}
       >
         {code}

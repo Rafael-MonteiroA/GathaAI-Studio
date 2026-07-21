@@ -8,7 +8,7 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface StreamCallbacks {
-  onToken: (content: string) => void;
+  onToken: (data: { content?: string; thinking?: string }) => void;
   onDone: (data: {
     model: string;
     tokens_prompt: number | null;
@@ -78,8 +78,8 @@ export function streamMessage(
 
               switch (currentEvent) {
                 case "token":
-                  if (data.content) {
-                    callbacks.onToken(data.content);
+                  if (data.content || data.thinking) {
+                    callbacks.onToken({ content: data.content, thinking: data.thinking });
                   }
                   break;
                 case "done":

@@ -214,4 +214,14 @@
   .animate-fade-in-up {
     animation: fadeInUp 0.3s ease-out;
   }
+
+  /* Indeterminate Progress Bar */
+  @keyframes progress-slide {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  .animate-progress {
+    animation: progress-slide 2s ease-in-out infinite;
+  }
 }

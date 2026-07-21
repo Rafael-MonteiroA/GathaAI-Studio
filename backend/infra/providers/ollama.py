@@ -106,6 +106,7 @@ class OllamaAdapter(ProviderAdapter):
                     is_done = data.get("done", False)
                     message_data = data.get("message", {})
                     content = message_data.get("content", "")
+                    thinking = message_data.get("thinking", "")
 
                     # We must yield even if content is empty (e.g., during "thinking" phase)
                     # to keep the HTTP streaming connection alive and prevent 
@@ -113,6 +114,7 @@ class OllamaAdapter(ProviderAdapter):
                     
                     chunk = StreamChunk(
                         content=content,
+                        thinking=thinking,
                         done=is_done,
                         model=data.get("model", model),
                     )

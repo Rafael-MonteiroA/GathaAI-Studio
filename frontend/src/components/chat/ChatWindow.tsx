@@ -78,6 +78,7 @@ export function ChatWindow() {
                 role={msg.role}
                 content={msg.content}
                 isStreaming={msg.isStreaming}
+                thinking={msg.thinking}
                 model={msg.model}
               />
             ))}
