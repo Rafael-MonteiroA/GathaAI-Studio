@@ -133,6 +133,4 @@ npm run dev
 
 ## Created by Rafael Monteiro
 
-⭐ Se gostou do projeto, deixe uma estrela no GitHub.
-
 </div>
