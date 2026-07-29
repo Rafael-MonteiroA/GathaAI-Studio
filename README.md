@@ -56,16 +56,16 @@ O **GathaAI Studio** é a evolução web do GathaAI, um ambiente completo e mode
 
 ```
 ┌─────────────┐     ┌──────────────────────────────────────────┐
-│  Next.js     │     │  Backend (FastAPI)                        │
-│  Frontend    │────▶│                                          │
-│  :3000       │ SSE │  ┌──────────┐  ┌──────────┐  ┌────────┐ │
-└─────────────┘     │  │ Chat     │  │ Memory   │  │Settings│ │
-                    │  │ Service  │  │ Engine   │  │  API   │ │
-                    │  └────┬─────┘  └────┬─────┘  └────────┘ │
+│  Next.js    │     │  Backend (FastAPI)                       │
+│  Frontend   │───▶ │                                          │
+│  :3000      │ SSE │  ┌──────────┐  ┌──────────┐  ┌────────┐  │
+└─────────────┘     │  │ Chat     │  │ Memory   │  │Settings│  │
+                    │  │ Service  │  │ Engine   │  │  API   │  │
+                    │  └────┬─────┘  └────┬─────┘  └────────┘  │
                     │       │             │                    │
                     │  ┌────▼─────────────▼────┐               │
-                    │  │   Provider Factory     │               │
-                    │  │  Ollama│Groq│OpenAI│OR │               │
+                    │  │   Provider Factory    │               │
+                    │  │  Ollama│Groq│OpenAI│OR│               │
                     │  └───────────────────────┘               │
                     └───────┬──────────┬───────────┬───────────┘
                             │          │           │
