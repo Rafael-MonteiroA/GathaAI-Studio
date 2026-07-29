@@ -5,7 +5,6 @@ import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { EmptyState } from "./EmptyState";
 import { useChatStore } from "@/store/chat";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function ChatWindow() {
   const {
@@ -29,10 +28,8 @@ export function ChatWindow() {
 
   const handleSend = async (content: string) => {
     if (!activeConversationId) {
-      // Create a new conversation first
       const id = await useChatStore.getState().createConversation();
       if (id) {
-        // Wait for state to update, then send
         setTimeout(() => {
           useChatStore.getState().sendMessage(content);
         }, 50);
@@ -46,32 +43,35 @@ export function ChatWindow() {
     <div className="flex flex-col h-full">
       {/* Error banner */}
       {error && (
-        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-destructive text-sm flex items-center justify-between">
+        <div className="px-6 py-2.5 bg-destructive/8 border-b border-destructive/15 text-destructive text-xs flex items-center justify-between">
           <span>{error}</span>
           <button
             onClick={clearError}
-            className="text-xs underline hover:no-underline"
+            className="text-xs underline hover:no-underline opacity-70 hover:opacity-100 transition-opacity"
           >
             Fechar
           </button>
         </div>
       )}
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin" ref={scrollRef}>
+      {/* Messages area — left-aligned, no centering */}
+      <div
+        className="flex-1 overflow-y-auto scrollbar-thin min-h-0"
+        ref={scrollRef}
+      >
         {!activeConversationId && messages.length === 0 ? (
           <EmptyState onSuggestion={handleSend} />
         ) : isLoadingMessages ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-start px-6 py-8">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-sm">Carregando...</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-foreground/30 animate-pulse" />
+              <span className="text-xs text-muted-foreground">Carregando...</span>
             </div>
           </div>
         ) : messages.length === 0 ? (
           <EmptyState onSuggestion={handleSend} />
         ) : (
-          <div className="max-w-3xl mx-auto py-4">
+          <div className="py-2">
             {messages.map((msg) => (
               <MessageBubble
                 key={msg.id}
@@ -82,13 +82,13 @@ export function ChatWindow() {
                 model={msg.model}
               />
             ))}
-            <div ref={bottomRef} />
+            <div ref={bottomRef} className="h-4" />
           </div>
         )}
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border bg-background/80 backdrop-blur-sm">
+      <div className="separator bg-background/95 backdrop-blur-sm">
         <MessageInput
           onSend={handleSend}
           onCancel={cancelStream}

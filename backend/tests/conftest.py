@@ -8,6 +8,7 @@ and mock provider for unit tests that don't need a real LLM.
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import AsyncGenerator, AsyncIterator
 
 import pytest
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from backend.api.deps import get_chat_service_for_conversation, get_provider
 from backend.domain.models import Base
 from backend.infra.db.session import get_db
 from backend.infra.providers.base import (
@@ -28,6 +30,9 @@ from backend.infra.providers.base import (
     StreamChunk,
 )
 from backend.main import app
+from backend.services.chat.chat_service import ChatService
+from backend.services.chat.prompt_builder import PromptBuilder
+from backend.services.memory.memory_service import MemoryService
 
 
 # ── Test Database (SQLite async in-memory) ────
@@ -129,13 +134,29 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     def _override_provider() -> ProviderAdapter:
         return MockProvider()
 
-    from backend.api.deps import get_provider
+    # Use a closure so FastAPI sees a clean signature without non-Pydantic
+    # types (e.g. AsyncSession) that would trip up dependency introspection.
+    # `uuid` must be imported at module level (not inside the function) because
+    # `from __future__ import annotations` turns annotations into ForwardRefs.
+    def _make_chat_service_override(session: AsyncSession):
+        async def _override(conversation_id: uuid.UUID) -> ChatService:
+            return ChatService(
+                db=session,
+                provider=MockProvider(),
+                prompt_builder=PromptBuilder(),
+                memory_service=MemoryService(),
+            )
+        return _override
 
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_provider] = _override_provider
+    app.dependency_overrides[get_chat_service_for_conversation] = (
+        _make_chat_service_override(db_session)
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
+

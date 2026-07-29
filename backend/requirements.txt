@@ -9,6 +9,7 @@ pydantic-settings
 sqlalchemy[asyncio]
 asyncpg
 alembic
+psycopg2-binary
 
 # ── Cache ─────────────────────────────────────
 redis[hiredis]
@@ -19,6 +20,11 @@ httpx
 # ── Streaming ─────────────────────────────────
 sse-starlette
 
+# ── Vector Store (Memory Engine) ──────────────
+chromadb-client
+python-multipart
+cryptography
+
 # ── Testing ───────────────────────────────────
 pytest
 pytest-asyncio
@@ -27,3 +33,5 @@ aiosqlite
 
 # ── Dev tools ─────────────────────────────────
 ruff
+
+slowapi

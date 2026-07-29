@@ -3,6 +3,8 @@
  *
  * All HTTP communication with the FastAPI backend goes through here.
  * SSE streaming is handled separately in streaming.ts.
+ *
+ * v0.3: Added Settings, Models list, Export, and Import endpoints.
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -33,7 +35,21 @@ export interface ConversationDetail extends Conversation {
   messages: Message[];
 }
 
-// ── API Functions ────────────────────────────
+export interface ConversationSettings {
+  conversation_id: string;
+  model: string | null;
+  temperature: number | null;
+  system_prompt: string | null;
+  updated_at: string | null;
+}
+
+export interface ModelInfo {
+  name: string;
+  size: number | null;
+  modified_at: string | null;
+}
+
+// ── Conversations ─────────────────────────────
 
 export async function createConversation(
   title: string = "Nova conversa"
@@ -67,6 +83,78 @@ export async function deleteConversation(id: string): Promise<void> {
   });
   if (!res.ok) throw new Error(`Failed to delete conversation: ${res.status}`);
 }
+
+// ── Settings ──────────────────────────────────
+
+export async function getConversationSettings(
+  id: string
+): Promise<ConversationSettings> {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${id}/settings`);
+  if (!res.ok) throw new Error(`Failed to get settings: ${res.status}`);
+  return res.json();
+}
+
+export async function updateConversationSettings(
+  id: string,
+  settings: Partial<Pick<ConversationSettings, "model" | "temperature" | "system_prompt">>
+): Promise<ConversationSettings> {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${id}/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) throw new Error(`Failed to update settings: ${res.status}`);
+  return res.json();
+}
+
+export async function listModels(): Promise<ModelInfo[]> {
+  const res = await fetch(`${API_BASE}/api/v1/models`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// ── Export / Import ───────────────────────────
+
+export async function exportConversation(
+  id: string,
+  format: "json" | "markdown" = "json"
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/conversations/${id}/export?format=${format}`
+  );
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const filename =
+    match?.[1] ?? `gathaai_export.${format === "markdown" ? "md" : "json"}`;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importConversation(
+  file: File
+): Promise<{ id: string; title: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/api/v1/conversations/import`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Import failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+// ── Health ────────────────────────────────────
 
 export async function checkHealth(): Promise<{
   status: string;

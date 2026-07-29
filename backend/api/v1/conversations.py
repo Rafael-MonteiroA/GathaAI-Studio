@@ -11,11 +11,12 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
-from backend.api.deps import get_chat_service
+from backend.api.deps import get_chat_service, get_chat_service_for_conversation
+from backend.api.v1.rate_limit import limiter
 from backend.services.chat.chat_service import ChatService
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -71,7 +72,9 @@ class MessageCreate(BaseModel):
     response_model=ConversationOut,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute")
 async def create_conversation(
+    request: Request,
     body: ConversationCreate,
     chat: ChatService = Depends(get_chat_service),
 ):
@@ -161,10 +164,12 @@ async def delete_conversation(
 
 
 @router.post("/{conversation_id}/messages")
+@limiter.limit("20/minute")
 async def send_message(
+    request: Request,
     conversation_id: uuid.UUID,
     body: MessageCreate,
-    chat: ChatService = Depends(get_chat_service),
+    chat: ChatService = Depends(get_chat_service_for_conversation),
 ):
     """
     Send a message and stream the assistant's response via SSE.

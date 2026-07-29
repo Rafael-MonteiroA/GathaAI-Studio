@@ -5,7 +5,8 @@ Single responsibility: receive a user message, build context, call the
 provider, persist everything, and yield streaming tokens. All other
 concerns (HTTP, SSE framing, auth) live in the API layer.
 
-This is the primary entry point for the chat use-case.
+v0.3: Integrates MemoryService (RAG recall + store) and
+      ConversationSettings (custom model / temperature / system prompt).
 """
 
 from __future__ import annotations
@@ -13,18 +14,23 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.domain.models import (
     Conversation,
+    ConversationSettings,
     Message,
     MessageRole,
     ProviderName,
 )
 from backend.infra.providers.base import ProviderAdapter, StreamChunk
 from backend.services.chat.prompt_builder import PromptBuilder
+
+if TYPE_CHECKING:
+    from backend.services.memory.memory_service import MemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +39,12 @@ class ChatService:
     """
     Orchestrates:
     1. Load/create conversation
-    2. Build prompt with history
-    3. Call provider (streaming)
-    4. Persist user + assistant messages
+    2. Recall relevant memories (if MemoryService available)
+    3. Load per-conversation settings
+    4. Build prompt with history + memory + custom system prompt
+    5. Call provider (streaming)
+    6. Persist user + assistant messages
+    7. Store new memory pair
     """
 
     def __init__(
@@ -43,10 +52,12 @@ class ChatService:
         db: AsyncSession,
         provider: ProviderAdapter,
         prompt_builder: PromptBuilder | None = None,
+        memory_service: "MemoryService | None" = None,
     ) -> None:
         self._db = db
         self._provider = provider
         self._prompt_builder = prompt_builder or PromptBuilder()
+        self._memory = memory_service
 
     # ── Conversation CRUD ─────────────────────
 
@@ -95,8 +106,24 @@ class ChatService:
             return False
         await self._db.delete(conversation)
         await self._db.flush()
+        # Also clean up vector memory store
+        if self._memory:
+            await self._memory.delete_conversation(conversation_id)
         logger.info("Deleted conversation %s", conversation_id)
         return True
+
+    # ── Settings helpers ──────────────────────
+
+    async def get_conversation_settings(
+        self, conversation_id: uuid.UUID
+    ) -> ConversationSettings | None:
+        """Load the settings row for a conversation (may not exist)."""
+        result = await self._db.execute(
+            select(ConversationSettings).where(
+                ConversationSettings.conversation_id == conversation_id
+            )
+        )
+        return result.scalar_one_or_none()
 
     # ── Chat (the core use-case) ──────────────
 
@@ -112,10 +139,13 @@ class ChatService:
 
         Flow:
         1. Load conversation + history
-        2. Persist user message
-        3. Build prompt
-        4. Stream from provider
-        5. Persist complete assistant response
+        2. Recall memories from ChromaDB
+        3. Load per-conversation settings
+        4. Persist user message
+        5. Build prompt (system prompt + memory + history)
+        6. Stream from provider
+        7. Persist complete assistant response
+        8. Store message pair in memory
 
         Yields StreamChunk objects that the API layer converts to SSE events.
         """
@@ -124,7 +154,34 @@ class ChatService:
         if not conversation:
             raise ValueError(f"Conversation {conversation_id} not found")
 
-        # 2. Persist user message
+        # 2. Recall memories (non-blocking — returns [] on any failure)
+        memories = []
+        if self._memory:
+            memories = await self._memory.recall(
+                conversation_id=conversation_id,
+                query=user_content,
+            )
+
+        # 3. Load per-conversation settings (overrides call-level params)
+        conv_settings = await self.get_conversation_settings(conversation_id)
+        effective_model = (
+            model
+            or (conv_settings.model if conv_settings and conv_settings.model else None)
+            or conversation.model
+            or None
+        )
+        effective_temperature = (
+            conv_settings.temperature
+            if conv_settings and conv_settings.temperature is not None
+            else temperature
+        )
+        custom_system_prompt = (
+            conv_settings.system_prompt
+            if conv_settings and conv_settings.system_prompt
+            else None
+        )
+
+        # 4. Persist user message
         user_msg = Message(
             conversation_id=conversation_id,
             role=MessageRole.USER,
@@ -133,27 +190,29 @@ class ChatService:
         self._db.add(user_msg)
         await self._db.flush()
 
-        # 3. Build prompt with history
-        history = conversation.messages  # loaded via selectin
+        # 5. Build prompt with history + memory + custom system prompt
+        history = conversation.messages
         messages = self._prompt_builder.build(
             user_message=user_content,
             history=list(history),
+            memory_snippets=memories or None,
+            custom_system_prompt=custom_system_prompt,
         )
 
-        # 4. Stream from provider
+        # 6. Stream from provider
         full_response = ""
         final_chunk = StreamChunk()
 
         async for chunk in self._provider.stream(
             messages=messages,
-            model=model or conversation.model or None,
-            temperature=temperature,
+            model=effective_model,
+            temperature=effective_temperature,
         ):
             full_response += chunk.content
             final_chunk = chunk
             yield chunk
 
-        # 5. Persist assistant response
+        # 7. Persist assistant response
         assistant_msg = Message(
             conversation_id=conversation_id,
             role=MessageRole.ASSISTANT,
@@ -171,11 +230,20 @@ class ChatService:
 
         await self._db.flush()
 
+        # 8. Store memory pair (fire-and-forget; errors are logged, not raised)
+        if self._memory and full_response:
+            await self._memory.store(
+                conversation_id=conversation_id,
+                user_message=user_content,
+                assistant_message=full_response,
+            )
+
         logger.info(
-            "Chat completed: conversation=%s, tokens_in=%s, tokens_out=%s",
+            "Chat completed: conversation=%s, tokens_in=%s, tokens_out=%s, memories=%d",
             conversation_id,
             final_chunk.tokens_prompt,
             final_chunk.tokens_completion,
+            len(memories),
         )
 
     async def auto_title(

@@ -1,4 +1,20 @@
 # domain package
-from backend.domain.models import Base, Conversation, Message, MessageRole, ProviderName
+from backend.domain.models import (
+    Base,
+    Conversation,
+    ConversationSettings,
+    Message,
+    MessageRole,
+    ProviderKey,
+    ProviderName,
+)
 
-__all__ = ["Base", "Conversation", "Message", "MessageRole", "ProviderName"]
+__all__ = [
+    "Base",
+    "Conversation",
+    "ConversationSettings",
+    "Message",
+    "MessageRole",
+    "ProviderKey",
+    "ProviderName",
+]

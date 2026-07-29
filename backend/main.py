@@ -11,10 +11,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from backend.config import settings
 from backend.api.v1.health import router as health_router
 from backend.api.v1.conversations import router as conversations_router
+from backend.api.v1.settings import router as settings_router
+from backend.api.v1.export import router as export_router
+from backend.api.v1.rate_limit import limiter
 
 
 # ── Logging ───────────────────────────────────
@@ -58,6 +64,14 @@ async def lifespan(app: FastAPI):
             settings.ollama_base_url,
         )
 
+    # Check ChromaDB connectivity (non-fatal)
+    from backend.infra.vector.chroma_client import get_chroma_client
+    chroma = await get_chroma_client()
+    if chroma:
+        logger.info("✅ ChromaDB conectado — Memory Engine ativo")
+    else:
+        logger.warning("⚠️  ChromaDB não disponível — Memory Engine desativado")
+
     yield
 
     # Shutdown
@@ -77,6 +91,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Rate Limiter ──────────────────────────────
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 # ── CORS ──────────────────────────────────────
 
 app.add_middleware(
@@ -91,6 +111,8 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(conversations_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
+app.include_router(export_router, prefix="/api/v1")
 
 
 # ── Root redirect ─────────────────────────────

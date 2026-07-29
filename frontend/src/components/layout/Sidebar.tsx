@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   MessageSquare,
-  Trash2,
   Bot,
   PanelLeftClose,
   PanelLeft,
+  MoreHorizontal,
+  Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChatStore } from "@/store/chat";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ConversationMenu } from "@/components/ui/ConversationMenu";
+import { SettingsPanel } from "@/components/settings/SettingsPanel";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,7 +29,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     createConversation,
     selectConversation,
     deleteConversation,
+    exportConversation,
+    importConversation,
+    openSettings,
   } = useChatStore();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadConversations();
@@ -37,8 +44,34 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     await createConversation();
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await importConversation(file);
+      e.target.value = "";
+    }
+  };
+
   return (
     <>
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Settings panel (renders over all content) */}
+      {activeConversationId && (
+        <SettingsPanel conversationId={activeConversationId} />
+      )}
+
       {/* Mobile overlay */}
       <AnimatePresence>
         {isOpen && (
@@ -60,33 +93,42 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed lg:relative z-50 flex flex-col w-[280px] h-full bg-sidebar border-r border-sidebar-border"
+            className="fixed lg:relative z-50 flex flex-col w-[260px] h-full bg-sidebar border-r border-sidebar-border"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b border-sidebar-border">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-                  <Bot size={14} className="text-primary" />
+            <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-foreground/8 flex items-center justify-center">
+                  <Bot size={13} className="text-foreground/50" />
                 </div>
-                <span className="text-sm font-semibold text-sidebar-foreground">
+                <span className="text-sm font-medium text-sidebar-foreground/80 tracking-tight">
                   GathaAI
                 </span>
               </div>
-              <button
-                onClick={onToggle}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <PanelLeftClose size={16} />
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={handleImportClick}
+                  className="w-7 h-7 rounded-md flex items-center justify-center text-sidebar-foreground/30 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
+                  title="Importar conversa (.json)"
+                >
+                  <Upload size={13} />
+                </button>
+                <button
+                  onClick={onToggle}
+                  className="w-7 h-7 rounded-md flex items-center justify-center text-sidebar-foreground/30 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
+                >
+                  <PanelLeftClose size={14} />
+                </button>
+              </div>
             </div>
 
             {/* New chat button */}
-            <div className="p-3">
+            <div className="px-3 py-2.5">
               <button
                 onClick={handleNewChat}
-                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-sidebar-border text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground hover:border-primary/40 hover:bg-sidebar-accent transition-all"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-sidebar-border/60 text-[13px] text-sidebar-foreground/40 hover:text-sidebar-foreground/80 hover:border-sidebar-border hover:bg-sidebar-accent transition-all"
               >
-                <Plus size={16} />
+                <Plus size={14} />
                 Nova conversa
               </button>
             </div>
@@ -114,6 +156,11 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       messageCount={conv.message_count}
                       onSelect={() => selectConversation(conv.id)}
                       onDelete={() => deleteConversation(conv.id)}
+                      onExportJson={() => exportConversation(conv.id, "json")}
+                      onExportMarkdown={() =>
+                        exportConversation(conv.id, "markdown")
+                      }
+                      onOpenSettings={() => openSettings(conv.id)}
                     />
                   ))}
                 </div>
@@ -121,10 +168,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-sidebar-border">
-              <div className="flex items-center gap-2 text-[11px] text-sidebar-foreground/40">
-                <div className="w-2 h-2 rounded-full bg-green-500/60" />
-                Ollama local
+            <div className="px-4 py-3 border-t border-sidebar-border">
+              <div className="flex items-center gap-2 text-[11px] text-sidebar-foreground/25">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
+                Ollama · Memory Engine
               </div>
             </div>
           </motion.aside>
@@ -153,6 +200,9 @@ function ConversationItem({
   messageCount,
   onSelect,
   onDelete,
+  onExportJson,
+  onExportMarkdown,
+  onOpenSettings,
 }: {
   id: string;
   title: string;
@@ -160,28 +210,46 @@ function ConversationItem({
   messageCount: number;
   onSelect: () => void;
   onDelete: () => void;
+  onExportJson: () => void;
+  onExportMarkdown: () => void;
+  onOpenSettings: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div
-      className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+      className={`group relative flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-all ${
         isActive
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          : "text-sidebar-foreground/45 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground/80"
       }`}
       onClick={onSelect}
     >
-      <MessageSquare size={14} className="flex-shrink-0 opacity-50" />
-      <span className="flex-1 text-sm truncate">{title}</span>
+      <MessageSquare size={12} className="flex-shrink-0 opacity-40" />
+      <span className="flex-1 text-[13px] truncate">{title}</span>
+
+      {/* More options button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onDelete();
+          setMenuOpen((v) => !v);
         }}
-        className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-sidebar-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all"
-        title="Deletar conversa"
+        className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-sidebar-foreground/30 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent transition-all"
+        title="Opções"
       >
-        <Trash2 size={12} />
+        <MoreHorizontal size={11} />
       </button>
+
+      {/* Context menu */}
+      <ConversationMenu
+        conversationId={id}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onOpenSettings={() => { onOpenSettings(); setMenuOpen(false); }}
+        onExportJson={() => { onExportJson(); setMenuOpen(false); }}
+        onExportMarkdown={() => { onExportMarkdown(); setMenuOpen(false); }}
+        onDelete={() => { onDelete(); setMenuOpen(false); }}
+      />
     </div>
   );
 }

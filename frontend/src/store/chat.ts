@@ -6,6 +6,8 @@
  * - Active conversation + messages
  * - Streaming state (isStreaming, partial response)
  * - CRUD operations that sync with the backend
+ * - Per-conversation settings (v0.3)
+ * - Export / Import (v0.3)
  */
 
 import { create } from "zustand";
@@ -14,8 +16,13 @@ import {
   listConversations as apiListConversations,
   getConversation as apiGetConversation,
   deleteConversation as apiDeleteConversation,
+  getConversationSettings as apiGetSettings,
+  updateConversationSettings as apiUpdateSettings,
+  exportConversation as apiExport,
+  importConversation as apiImport,
   type Conversation,
   type Message,
+  type ConversationSettings,
 } from "@/lib/api";
 import { streamMessage } from "@/lib/streaming";
 
@@ -40,16 +47,35 @@ interface ChatState {
   isStreaming: boolean;
   streamController: AbortController | null;
 
+  // Settings panel
+  settingsPanelOpen: boolean;
+  activeSettings: ConversationSettings | null;
+  isLoadingSettings: boolean;
+
   // Error
   error: string | null;
 
-  // Actions
+  // Actions — conversations
   loadConversations: () => Promise<void>;
   createConversation: () => Promise<string | null>;
   selectConversation: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   cancelStream: () => void;
+
+  // Actions — settings
+  openSettings: (conversationId: string) => Promise<void>;
+  closeSettings: () => void;
+  saveSettings: (
+    conversationId: string,
+    settings: Partial<Pick<ConversationSettings, "model" | "temperature" | "system_prompt">>
+  ) => Promise<void>;
+
+  // Actions — export / import
+  exportConversation: (id: string, format: "json" | "markdown") => Promise<void>;
+  importConversation: (file: File) => Promise<void>;
+
+  // Utility
   clearError: () => void;
 }
 
@@ -63,14 +89,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingMessages: false,
   isStreaming: false,
   streamController: null,
+  settingsPanelOpen: false,
+  activeSettings: null,
+  isLoadingSettings: false,
   error: null,
+
+  // ── Conversations ──────────────────────────
 
   loadConversations: async () => {
     set({ isLoadingConversations: true, error: null });
     try {
       const conversations = await apiListConversations();
       set({ conversations, isLoadingConversations: false });
-    } catch (err) {
+    } catch {
       set({
         error: "Não foi possível carregar as conversas",
         isLoadingConversations: false,
@@ -88,7 +119,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         error: null,
       }));
       return conv.id;
-    } catch (err) {
+    } catch {
       set({ error: "Não foi possível criar a conversa" });
       return null;
     }
@@ -107,7 +138,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: detail.messages,
         isLoadingMessages: false,
       });
-    } catch (err) {
+    } catch {
       set({
         error: "Não foi possível carregar a conversa",
         isLoadingMessages: false,
@@ -125,9 +156,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
           conversations,
           activeConversationId: isActive ? null : state.activeConversationId,
           messages: isActive ? [] : state.messages,
+          settingsPanelOpen: isActive ? false : state.settingsPanelOpen,
         };
       });
-    } catch (err) {
+    } catch {
       set({ error: "Não foi possível deletar a conversa" });
     }
   },
@@ -166,7 +198,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       error: null,
     }));
 
-    // Start streaming
     const controller = streamMessage(activeConversationId, content, {
       onToken: (data) => {
         set((state) => {
@@ -211,7 +242,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
       onError: (error) => {
         set((state) => {
-          // Remove the empty assistant placeholder on error
           const messages = state.messages.filter(
             (m) => !(m.role === "assistant" && m.isStreaming && !m.content)
           );
@@ -244,6 +274,56 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
     }
   },
+
+  // ── Settings ───────────────────────────────
+
+  openSettings: async (conversationId: string) => {
+    set({ settingsPanelOpen: true, isLoadingSettings: true, activeSettings: null });
+    try {
+      const settings = await apiGetSettings(conversationId);
+      set({ activeSettings: settings, isLoadingSettings: false });
+    } catch {
+      set({ isLoadingSettings: false });
+    }
+  },
+
+  closeSettings: () => {
+    set({ settingsPanelOpen: false, activeSettings: null });
+  },
+
+  saveSettings: async (conversationId, settings) => {
+    try {
+      const updated = await apiUpdateSettings(conversationId, settings);
+      set({ activeSettings: updated });
+    } catch {
+      set({ error: "Não foi possível salvar as configurações" });
+    }
+  },
+
+  // ── Export / Import ────────────────────────
+
+  exportConversation: async (id, format) => {
+    try {
+      await apiExport(id, format);
+    } catch {
+      set({ error: "Erro ao exportar conversa" });
+    }
+  },
+
+  importConversation: async (file) => {
+    try {
+      const result = await apiImport(file);
+      // Reload conversations so the imported one appears in the sidebar
+      await get().loadConversations();
+      // Auto-select the imported conversation
+      await get().selectConversation(result.id);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao importar conversa";
+      set({ error: msg });
+    }
+  },
+
+  // ── Utility ────────────────────────────────
 
   clearError: () => set({ error: null }),
 }));
