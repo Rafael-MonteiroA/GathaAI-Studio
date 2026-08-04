@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { EmptyState } from "./EmptyState";
+import { ApiModelPicker, type ApiModelSelection } from "./ApiModelPicker";
 import { useChatStore } from "@/store/chat";
 
 export function ChatWindow() {
@@ -20,6 +21,12 @@ export function ChatWindow() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Pending text to fill into the MessageInput
+  const [pendingInput, setPendingInput] = useState<string>("");
+
+  // Whether to show the API model picker in the chat area
+  const [showApiModelPicker, setShowApiModelPicker] = useState(false);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -39,6 +46,28 @@ export function ChatWindow() {
     sendMessage(content);
   };
 
+  const handleFillInput = useCallback((text: string) => {
+    setPendingInput(text);
+    setShowApiModelPicker(false);
+  }, []);
+
+  const handleSelectApiModel = useCallback(() => {
+    setShowApiModelPicker(true);
+  }, []);
+
+  const handleApiModelSelected = useCallback((selection: ApiModelSelection) => {
+    // Store selection in sessionStorage so the backend/future integration can use it
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("gathaai_api_selection", JSON.stringify(selection));
+    }
+    setShowApiModelPicker(false);
+    // Fill input hint so user knows API mode is active
+    setPendingInput(`[${selection.provider}/${selection.model}] `);
+  }, []);
+
+  const isEmptyState =
+    (!activeConversationId && messages.length === 0) || messages.length === 0;
+
   return (
     <div className="flex flex-col h-full">
       {/* Error banner */}
@@ -54,13 +83,21 @@ export function ChatWindow() {
         </div>
       )}
 
-      {/* Messages area — left-aligned, no centering */}
+      {/* Messages area */}
       <div
         className="flex-1 overflow-y-auto scrollbar-thin min-h-0"
         ref={scrollRef}
       >
-        {!activeConversationId && messages.length === 0 ? (
-          <EmptyState onSuggestion={handleSend} />
+        {showApiModelPicker ? (
+          <ApiModelPicker
+            onSelect={handleApiModelSelected}
+            onCancel={() => setShowApiModelPicker(false)}
+          />
+        ) : isEmptyState && !isLoadingMessages ? (
+          <EmptyState
+            onFillInput={handleFillInput}
+            onSelectApiModel={handleSelectApiModel}
+          />
         ) : isLoadingMessages ? (
           <div className="flex items-center justify-start px-6 py-8">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -68,8 +105,6 @@ export function ChatWindow() {
               <span className="text-xs text-muted-foreground">Carregando...</span>
             </div>
           </div>
-        ) : messages.length === 0 ? (
-          <EmptyState onSuggestion={handleSend} />
         ) : (
           <div className="py-2">
             {messages.map((msg) => (
@@ -93,6 +128,8 @@ export function ChatWindow() {
           onSend={handleSend}
           onCancel={cancelStream}
           isStreaming={isStreaming}
+          externalValue={pendingInput}
+          onExternalValueConsumed={() => setPendingInput("")}
         />
       </div>
     </div>

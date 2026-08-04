@@ -49,6 +49,14 @@ export interface ModelInfo {
   modified_at: string | null;
 }
 
+/** A stored provider key — raw key is NEVER returned by the backend. */
+export interface ProviderKeyInfo {
+  id: string;
+  provider: string;
+  configured: true;
+  updated_at: string;
+}
+
 // ── Conversations ─────────────────────────────
 
 export async function createConversation(
@@ -163,4 +171,43 @@ export async function checkHealth(): Promise<{
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error("Backend unreachable");
   return res.json();
+}
+
+// ── Provider Keys ─────────────────────────────
+
+/** Returns all providers that have a key stored on the backend. */
+export async function listApiKeys(): Promise<ProviderKeyInfo[]> {
+  const res = await fetch(`${API_BASE}/api/v1/keys`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/**
+ * Store (or replace) a key for the given provider.
+ * The raw key is encrypted on the backend before storage.
+ */
+export async function upsertApiKey(
+  provider: string,
+  key: string
+): Promise<ProviderKeyInfo> {
+  const res = await fetch(`${API_BASE}/api/v1/keys`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, key }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Failed to save key: ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Delete the stored key for the given provider. */
+export async function deleteApiKey(provider: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/keys/${provider}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Failed to delete key: ${res.status}`);
+  }
 }

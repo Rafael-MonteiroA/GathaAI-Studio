@@ -1,36 +1,41 @@
 "use client";
 
-import { Bot, Sparkles, Code, FileText, Lightbulb } from "lucide-react";
+import { Bot, Sparkles, Code, FileText, Lightbulb, Cloud } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface EmptyStateProps {
-  onSuggestion: (content: string) => void;
+  onFillInput: (text: string) => void;
+  onSelectApiModel: () => void;
 }
 
 const suggestions = [
   {
     icon: Code,
     label: "Ajuda com código",
-    prompt: "Me ajude a criar uma função Python que...",
+    placeholder: "Me ajude a criar ",
+    hint: "ex: uma função Python que ordena uma lista...",
   },
   {
     icon: Lightbulb,
     label: "Explicar conceito",
-    prompt: "Explique de forma simples o que é...",
+    placeholder: "Explique de forma simples o que é ",
+    hint: "ex: machine learning, recursão...",
   },
   {
     icon: FileText,
     label: "Resumir texto",
-    prompt: "Resuma o seguinte texto para mim:",
+    placeholder: "Resuma o seguinte texto: ",
+    hint: "cole o texto após os dois pontos...",
   },
   {
     icon: Sparkles,
     label: "Ideia criativa",
-    prompt: "Me dê ideias criativas para...",
+    placeholder: "Me dê ideias criativas para ",
+    hint: "ex: um app, um projeto, uma campanha...",
   },
 ];
 
-export function EmptyState({ onSuggestion }: EmptyStateProps) {
+export function EmptyState({ onFillInput, onSelectApiModel }: EmptyStateProps) {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Top section — header */}
@@ -68,7 +73,7 @@ export function EmptyState({ onSuggestion }: EmptyStateProps) {
         </motion.p>
       </div>
 
-      {/* Suggestions section — fills remaining space */}
+      {/* Suggestions section */}
       <div className="flex-1 px-6 py-6 flex flex-col gap-1.5">
         <span className="text-[10px] text-foreground/20 uppercase tracking-widest font-medium mb-2">
           Comece com uma sugestão
@@ -80,21 +85,58 @@ export function EmptyState({ onSuggestion }: EmptyStateProps) {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12 + i * 0.06 }}
-            onClick={() => onSuggestion(s.prompt)}
+            onClick={() => onFillInput(s.placeholder)}
             className="flex items-center gap-4 w-full px-4 py-3.5 rounded-lg border border-foreground/6 bg-foreground/2 hover:bg-foreground/5 hover:border-foreground/12 transition-all text-left group"
           >
             <s.icon
               size={14}
               className="text-foreground/25 group-hover:text-foreground/50 transition-colors flex-shrink-0"
             />
-            <span className="text-sm text-foreground/50 group-hover:text-foreground/75 transition-colors font-medium">
-              {s.label}
-            </span>
-            <span className="ml-auto text-xs text-foreground/20 group-hover:text-foreground/35 transition-colors font-mono truncate max-w-[260px]">
-              {s.prompt}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm text-foreground/50 group-hover:text-foreground/75 transition-colors font-medium">
+                {s.label}
+              </span>
+              <span className="text-xs text-foreground/20 group-hover:text-foreground/35 transition-colors font-mono truncate">
+                {s.hint}
+              </span>
+            </div>
+            <span className="ml-auto text-xs text-foreground/15 group-hover:text-foreground/30 transition-colors font-mono truncate max-w-[160px] flex-shrink-0">
+              {s.placeholder}…
             </span>
           </motion.button>
         ))}
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-2">
+          <div className="flex-1 h-px bg-foreground/6" />
+          <span className="text-[10px] text-foreground/20 uppercase tracking-widest">ou</span>
+          <div className="flex-1 h-px bg-foreground/6" />
+        </div>
+
+        {/* API model button */}
+        <motion.button
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 + suggestions.length * 0.06 }}
+          onClick={onSelectApiModel}
+          className="flex items-center gap-4 w-full px-4 py-3.5 rounded-lg border border-dashed border-foreground/10 bg-transparent hover:bg-foreground/3 hover:border-foreground/20 transition-all text-left group"
+        >
+          <Cloud
+            size={14}
+            className="text-foreground/20 group-hover:text-foreground/45 transition-colors flex-shrink-0"
+          />
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm text-foreground/40 group-hover:text-foreground/65 transition-colors font-medium">
+              Usar modelo de API
+            </span>
+            <span className="text-xs text-foreground/18 group-hover:text-foreground/30 transition-colors">
+              OpenAI, Anthropic, Google AI, Groq e outros
+            </span>
+          </div>
+          <span className="ml-auto text-[10px] text-foreground/15 group-hover:text-foreground/30 transition-colors px-2 py-0.5 rounded border border-foreground/8 font-medium">
+            API
+          </span>
+        </motion.button>
       </div>
     </div>
   );

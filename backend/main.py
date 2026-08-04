@@ -20,6 +20,7 @@ from backend.api.v1.health import router as health_router
 from backend.api.v1.conversations import router as conversations_router
 from backend.api.v1.settings import router as settings_router
 from backend.api.v1.export import router as export_router
+from backend.api.v1.keys import router as keys_router
 from backend.api.v1.rate_limit import limiter
 
 
@@ -113,6 +114,7 @@ app.include_router(health_router)
 app.include_router(conversations_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 app.include_router(export_router, prefix="/api/v1")
+app.include_router(keys_router, prefix="/api/v1")
 
 
 # ── Root redirect ─────────────────────────────

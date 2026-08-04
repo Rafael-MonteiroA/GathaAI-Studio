@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, type KeyboardEvent } from "react";
+import { useRef, useState, useCallback, useEffect, type KeyboardEvent } from "react";
 import { Send, Square } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -10,6 +10,8 @@ interface MessageInputProps {
   isStreaming?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  externalValue?: string;
+  onExternalValueConsumed?: () => void;
 }
 
 export function MessageInput({
@@ -18,9 +20,31 @@ export function MessageInput({
   isStreaming = false,
   disabled = false,
   placeholder = "Envie uma mensagem...",
+  externalValue,
+  onExternalValueConsumed,
 }: MessageInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // When externalValue is set, fill the textarea and focus it
+  useEffect(() => {
+    if (externalValue !== undefined && externalValue !== "") {
+      setValue(externalValue);
+      // Resize and focus after setting value
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          textarea.style.height = "auto";
+          textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+          textarea.focus();
+          // Move cursor to end
+          textarea.selectionStart = textarea.value.length;
+          textarea.selectionEnd = textarea.value.length;
+        }
+      }, 20);
+      onExternalValueConsumed?.();
+    }
+  }, [externalValue, onExternalValueConsumed]);
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();

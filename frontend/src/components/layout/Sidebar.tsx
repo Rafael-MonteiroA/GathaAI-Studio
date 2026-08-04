@@ -9,11 +9,13 @@ import {
   PanelLeft,
   MoreHorizontal,
   Upload,
+  Key,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChatStore } from "@/store/chat";
 import { ConversationMenu } from "@/components/ui/ConversationMenu";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import { ApiKeysPanel } from "@/components/settings/ApiKeysPanel";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     openSettings,
   } = useChatStore();
 
+  const [apiKeysPanelOpen, setApiKeysPanelOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -71,6 +74,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       {activeConversationId && (
         <SettingsPanel conversationId={activeConversationId} />
       )}
+
+      {/* API Keys panel */}
+      <ApiKeysPanel
+        isOpen={apiKeysPanelOpen}
+        onClose={() => setApiKeysPanelOpen(false)}
+      />
 
       {/* Mobile overlay */}
       <AnimatePresence>
@@ -122,14 +131,21 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               </div>
             </div>
 
-            {/* New chat button */}
-            <div className="px-3 py-2.5">
+            {/* New chat button + API Keys button */}
+            <div className="px-3 py-2 flex flex-col gap-1.5">
               <button
                 onClick={handleNewChat}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-sidebar-border/60 text-[13px] text-sidebar-foreground/40 hover:text-sidebar-foreground/80 hover:border-sidebar-border hover:bg-sidebar-accent transition-all"
               >
                 <Plus size={14} />
                 Nova conversa
+              </button>
+              <button
+                onClick={() => setApiKeysPanelOpen(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-sidebar-foreground/30 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent transition-all"
+              >
+                <Key size={13} />
+                Chaves de API
               </button>
             </div>
 
