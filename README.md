@@ -39,15 +39,15 @@ O **GathaAI Studio** é a evolução web do GathaAI, um ambiente completo e mode
 |----------|----------|
 | 🖥️ Frontend Web | Interface moderna e responsiva construída com Next.js |
 | ⚡ Backend Assíncrono | API extremamente veloz com FastAPI (Python) |
-| 🧠 Memória Persistente | Histórico salvo via PostgreSQL + SQLAlchemy |
+| 🧠 Memória Persistente | Histórico salvo via PostgreSQL + SQLAlchemy (SQLite em dev) |
 | 🚀 Cache e Estado | Otimização de performance utilizando Redis |
-| 🤖 Multi-Provider | Ollama (local), Groq, OpenAI, OpenRouter — troque por conversa |
+| 🤖 Multi-Provider | Ollama (local), Groq, OpenAI, Anthropic, Gemini, OpenRouter — troque por conversa |
 | 🧠 Memory Engine | Recall semântico de conversas passadas via ChromaDB |
 | 🌊 Streaming (SSE) | Resposta visual contínua token a token, com exibição de "raciocínio" |
 | ⚙️ Settings por Conversa | Model override, temperatura e system prompt customizável |
-| 📤 Export | Exporte conversas em JSON ou Markdown |
+| 📤 Export / Import | Exporte conversas em JSON ou Markdown; re-importe depois |
 | 🛡️ Rate Limiting | Proteção contra abuso via slowapi |
-| 🔐 BYOK (Bring Your Own Key) | Adicione suas chaves de API na UI — armazenadas com criptografia |
+| 🔐 BYOK (Bring Your Own Key) | Chaves gerenciadas via `/api/v1/keys` — criptografadas com AES no servidor, nunca retornadas em plain-text |
 | 🐳 Dockerizado | Configuração e deploy simplificados via Docker Compose |
 
 ---
@@ -57,7 +57,7 @@ O **GathaAI Studio** é a evolução web do GathaAI, um ambiente completo e mode
 ```
 ┌─────────────┐     ┌──────────────────────────────────────────┐
 │  Next.js    │     │  Backend (FastAPI)                       │
-│  Frontend   │───▶ │                                          │
+│  Frontend   │──▶ │                                           │
 │  :3000      │ SSE │  ┌──────────┐  ┌──────────┐  ┌────────┐  │
 └─────────────┘     │  │ Chat     │  │ Memory   │  │Settings│  │
                     │  │ Service  │  │ Engine   │  │  API   │  │
@@ -160,11 +160,21 @@ curl http://localhost:8000/health
 | Provider | Tipo | Configuração |
 |----------|------|-------------|
 | **Ollama** | Local (gratuito) | Funciona automaticamente — nenhuma chave necessária |
-| **Groq** | Cloud (freemium) | Adicione sua API key via Settings na interface |
-| **OpenAI** | Cloud (pago) | Adicione sua API key via Settings na interface |
-| **OpenRouter** | Cloud (multi-modelo) | Adicione sua API key via Settings na interface |
+| **Groq** | Cloud (freemium) | Sidebar → Chaves de API → adicione sua `gsk_...` |
+| **OpenAI** | Cloud (pago) | Sidebar → Chaves de API → adicione sua `sk-...` |
+| **Anthropic** | Cloud (pago) | Sidebar → Chaves de API → adicione sua `sk-ant-...` |
+| **Google Gemini** | Cloud (freemium) | Sidebar → Chaves de API → adicione sua `AIza...` |
+| **OpenRouter** | Cloud (multi-modelo) | Sidebar → Chaves de API → adicione sua chave OR |
 
-> As chaves de API são armazenadas com criptografia AES (Fernet) no banco de dados. Nenhum dado é enviado para fora da sua máquina sem sua autorização explícita.
+> As chaves são enviadas ao backend via `POST /api/v1/keys`, criptografadas com **Fernet (AES-128-CBC)** antes de serem salvas no banco de dados. A chave bruta **nunca é retornada** por nenhum endpoint.
+
+### Como funciona o BYOK
+
+1. Abra a sidebar → clique em **Chaves de API**
+2. Selecione o provedor e cole sua chave
+3. A chave é enviada ao backend, criptografada e salva no banco
+4. No chat, clique em **Usar modelo de API** e escolha o provedor + modelo
+5. O backend descriptografa a chave em memória apenas no momento da chamada
 
 ---
 
@@ -172,7 +182,7 @@ curl http://localhost:8000/health
 
 ✅ Chaves, senhas de banco e variáveis no arquivo `.env` (protegido e ignorado pelo Git).
 
-✅ API keys de provedores criptografadas com Fernet (AES-128-CBC) antes de salvar no banco.
+✅ API keys de provedores criptografadas com **Fernet (AES-128-CBC)** antes de salvar no banco — a chave bruta nunca é retornada pelo servidor (`GET /api/v1/keys` retorna apenas `{provider, configured: true}`).
 
 ✅ Validação de segredos em produção — o sistema recusa iniciar com credenciais padrão em modo produção.
 
@@ -181,6 +191,8 @@ curl http://localhost:8000/health
 ✅ Uso de Docker para isolamento do banco e serviços locais.
 
 ✅ Totalmente compatível com IA local (Ollama), sem envio de dados confidenciais para fora da sua máquina.
+
+✅ Fallback automático para SQLite em desenvolvimento — sem necessidade de Docker para começar.
 
 ---
 
@@ -211,7 +223,7 @@ curl http://localhost:8000/health
 ```
 GathaAI-Studio/
 ├── backend/
-│   ├── api/v1/            # Endpoints REST (conversations, settings, export, health)
+│   ├── api/v1/            # Endpoints REST (conversations, settings, export, keys, health)
 │   ├── domain/            # Models SQLAlchemy (Conversation, Message, Settings, ProviderKey)
 │   ├── infra/
 │   │   ├── db/            # Database engine + migrations (Alembic)
