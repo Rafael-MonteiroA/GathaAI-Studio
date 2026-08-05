@@ -17,6 +17,7 @@ export function ChatWindow() {
     sendMessage,
     cancelStream,
     clearError,
+    setConversationProvider,
   } = useChatStore();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,15 +56,13 @@ export function ChatWindow() {
     setShowApiModelPicker(true);
   }, []);
 
-  const handleApiModelSelected = useCallback((selection: ApiModelSelection) => {
-    // Store selection in sessionStorage so the backend/future integration can use it
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("gathaai_api_selection", JSON.stringify(selection));
-    }
+  const handleApiModelSelected = useCallback(async (selection: ApiModelSelection) => {
+    // Persist provider + model to backend so all future messages use this provider
+    await setConversationProvider(selection.provider, selection.model);
     setShowApiModelPicker(false);
-    // Fill input hint so user knows API mode is active
-    setPendingInput(`[${selection.provider}/${selection.model}] `);
-  }, []);
+    // Brief feedback in input
+    setPendingInput(`[${selection.provider} · ${selection.model}] `);
+  }, [setConversationProvider]);
 
   const isEmptyState =
     (!activeConversationId && messages.length === 0) || messages.length === 0;

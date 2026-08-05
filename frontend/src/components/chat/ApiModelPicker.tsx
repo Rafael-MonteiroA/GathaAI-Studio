@@ -34,17 +34,19 @@ const PROVIDERS: Provider[] = [
     label: "Anthropic",
     icon: "◈",
     models: [
-      { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", description: "Equilibrado e potente" },
-      { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", description: "Ultra-rápido" },
+      { id: "claude-opus-4-5", label: "Claude Opus 4.5", description: "Mais capaz" },
+      { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", description: "Equilibrado e potente" },
+      { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", description: "Ultra-rápido" },
     ],
   },
   {
-    id: "google",
-    label: "Google AI",
+    id: "gemini",
+    label: "Google Gemini",
     icon: "◎",
     models: [
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "Máxima capacidade" },
       { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", description: "Rápido e eficiente" },
-      { id: "gemini-2.0-pro", label: "Gemini 2.0 Pro", description: "Máxima capacidade" },
+      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", description: "Leve e ágil" },
     ],
   },
   {
@@ -52,17 +54,9 @@ const PROVIDERS: Provider[] = [
     label: "Groq",
     icon: "⚡",
     models: [
-      { id: "llama-3.1-70b-versatile", label: "LLaMA 3.1 70B", description: "Open source, veloz" },
-      { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B", description: "Alta qualidade" },
-    ],
-  },
-  {
-    id: "mistral",
-    label: "Mistral",
-    icon: "◆",
-    models: [
-      { id: "mistral-large-latest", label: "Mistral Large", description: "Topo de linha" },
-      { id: "mistral-small-latest", label: "Mistral Small", description: "Leve e rápido" },
+      { id: "llama-3.3-70b-versatile", label: "LLaMA 3.3 70B", description: "Open source, veloz" },
+      { id: "llama-3.1-70b-versatile", label: "LLaMA 3.1 70B", description: "Alta qualidade" },
+      { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B", description: "Eficiente" },
     ],
   },
   {
@@ -72,6 +66,7 @@ const PROVIDERS: Provider[] = [
     models: [
       { id: "openai/gpt-4o", label: "GPT-4o via OR", description: "Multi-provider" },
       { id: "anthropic/claude-3-5-sonnet", label: "Claude 3.5 Sonnet via OR", description: "Alta qualidade" },
+      { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash via OR", description: "Google via OR" },
     ],
   },
 ];

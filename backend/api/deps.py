@@ -109,8 +109,6 @@ async def get_chat_service_for_conversation(
         provider = await build_provider_for_conversation(conversation_id, db)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
 
     return ChatService(
         db=db,

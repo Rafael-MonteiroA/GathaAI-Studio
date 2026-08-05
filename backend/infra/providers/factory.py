@@ -73,10 +73,16 @@ def _build_cloud_adapter(provider: ProviderName, api_key: str) -> ProviderAdapte
         from backend.infra.providers.openai_compat import OpenAICompatAdapter
         return OpenAICompatAdapter(api_key=api_key, provider_slug="openrouter")
 
-    # Gemini and Anthropic: adapters not yet implemented
-    raise NotImplementedError(
-        f"Adapter para '{provider.value}' ainda não implementado. "
-        f"Providers disponíveis: ollama, groq, openai, openrouter."
+    if provider == ProviderName.ANTHROPIC:
+        from backend.infra.providers.anthropic import AnthropicAdapter
+        return AnthropicAdapter(api_key=api_key)
+
+    if provider == ProviderName.GEMINI:
+        from backend.infra.providers.gemini import GeminiAdapter
+        return GeminiAdapter(api_key=api_key)
+
+    raise ValueError(
+        f"Adapter para '{provider.value}' não implementado."
     )
 
 
@@ -98,7 +104,7 @@ async def build_provider(
         ValueError: If the provider requires a key that isn't configured,
                     or if the key cannot be decrypted.
         NotImplementedError: If the provider is known but its adapter
-                             is not yet implemented (Gemini, Anthropic).
+                             is not yet implemented.
     """
     # Normalise to enum
     if isinstance(provider_name, str):

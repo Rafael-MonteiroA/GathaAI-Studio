@@ -29,6 +29,10 @@ router = APIRouter(tags=["settings"])
 
 class SettingsIn(BaseModel):
     """Payload for creating/updating conversation settings."""
+    provider: str | None = Field(
+        default=None,
+        description="Provider override: ollama | groq | openai | openrouter | anthropic | gemini",
+    )
     model: str | None = Field(
         default=None,
         description="LLM model override (e.g. 'qwen3:8b', 'llama3.2')",
@@ -49,6 +53,7 @@ class SettingsIn(BaseModel):
 class SettingsOut(BaseModel):
     """Settings response with conversation_id and timestamps."""
     conversation_id: uuid.UUID
+    provider: str | None = None
     model: str | None = None
     temperature: float | None = None
     system_prompt: str | None = None
@@ -71,6 +76,7 @@ def _settings_to_out(
 ) -> SettingsOut:
     return SettingsOut(
         conversation_id=settings.conversation_id,
+        provider=settings.provider,
         model=settings.model,
         temperature=settings.temperature,
         system_prompt=settings.system_prompt,
@@ -126,6 +132,7 @@ async def upsert_settings(
 
     if existing:
         # Update in-place
+        existing.provider = body.provider
         existing.model = body.model
         existing.temperature = body.temperature
         existing.system_prompt = body.system_prompt
@@ -136,6 +143,7 @@ async def upsert_settings(
         # Create new
         new_settings = ConversationSettings(
             conversation_id=conversation_id,
+            provider=body.provider,
             model=body.model,
             temperature=body.temperature,
             system_prompt=body.system_prompt,

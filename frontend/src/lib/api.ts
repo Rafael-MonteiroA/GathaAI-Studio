@@ -37,6 +37,7 @@ export interface ConversationDetail extends Conversation {
 
 export interface ConversationSettings {
   conversation_id: string;
+  provider: string | null;
   model: string | null;
   temperature: number | null;
   system_prompt: string | null;
@@ -104,7 +105,7 @@ export async function getConversationSettings(
 
 export async function updateConversationSettings(
   id: string,
-  settings: Partial<Pick<ConversationSettings, "model" | "temperature" | "system_prompt">>
+  settings: Partial<Pick<ConversationSettings, "provider" | "model" | "temperature" | "system_prompt">>
 ): Promise<ConversationSettings> {
   const res = await fetch(`${API_BASE}/api/v1/conversations/${id}/settings`, {
     method: "PUT",
@@ -113,6 +114,18 @@ export async function updateConversationSettings(
   });
   if (!res.ok) throw new Error(`Failed to update settings: ${res.status}`);
   return res.json();
+}
+
+/**
+ * Shortcut to update only provider + model for a conversation.
+ * This makes the provider selector in the UI persist its choice.
+ */
+export async function updateConversationProvider(
+  id: string,
+  provider: string,
+  model: string
+): Promise<ConversationSettings> {
+  return updateConversationSettings(id, { provider, model });
 }
 
 export async function listModels(): Promise<ModelInfo[]> {

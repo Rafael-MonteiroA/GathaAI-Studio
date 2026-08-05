@@ -18,6 +18,7 @@ import {
   deleteConversation as apiDeleteConversation,
   getConversationSettings as apiGetSettings,
   updateConversationSettings as apiUpdateSettings,
+  updateConversationProvider as apiUpdateProvider,
   exportConversation as apiExport,
   importConversation as apiImport,
   type Conversation,
@@ -68,8 +69,9 @@ interface ChatState {
   closeSettings: () => void;
   saveSettings: (
     conversationId: string,
-    settings: Partial<Pick<ConversationSettings, "model" | "temperature" | "system_prompt">>
+    settings: Partial<Pick<ConversationSettings, "provider" | "model" | "temperature" | "system_prompt">>
   ) => Promise<void>;
+  setConversationProvider: (provider: string, model: string) => Promise<void>;
 
   // Actions — export / import
   exportConversation: (id: string, format: "json" | "markdown") => Promise<void>;
@@ -297,6 +299,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ activeSettings: updated });
     } catch {
       set({ error: "Não foi possível salvar as configurações" });
+    }
+  },
+
+  setConversationProvider: async (provider, model) => {
+    const { activeConversationId } = get();
+    if (!activeConversationId) return;
+    try {
+      const updated = await apiUpdateProvider(activeConversationId, provider, model);
+      set({ activeSettings: updated });
+    } catch {
+      set({ error: "Não foi possível atualizar o provider" });
     }
   },
 
